@@ -1,0 +1,13 @@
+# Works on Mac M1/M2/Intel and Linux (multi-arch base image)
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Source is mounted as a volume — no COPY needed
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]

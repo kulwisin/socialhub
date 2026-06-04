@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 213 31% 91%;
+
+    --card: 222 47% 10%;
+    --card-foreground: 213 31% 91%;
+
+    --border: 216 34% 16%;
+    --input: 216 34% 16%;
+    --ring: 263 70% 55%;
+
+    --primary: 263 70% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 213 31% 91%;
+
+    --muted: 223 47% 13%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 222 47% 14%;
+    --accent-foreground: 213 31% 91%;
+
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --radius: 0.75rem;
+
+    /* Platform colors */
+    --instagram: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+    --facebook: #1877f2;
+    --tiktok: #010101;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer utilities {
+  .platform-instagram {
+    background: var(--instagram);
+  }
+
+  .text-gradient-instagram {
+    background: var(--instagram);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5;
+  }
+}
