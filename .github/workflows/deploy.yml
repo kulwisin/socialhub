@@ -1,0 +1,110 @@
+name: Deploy
+
+on:
+  # Deploy automatically when CI passes on main
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+  # Or trigger manually from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options: [production]
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    # Only run if the CI workflow succeeded (or on manual trigger)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Pre-deploy backup ───────────────────────────────────────────────────
+      - name: Backup database before deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script: |
+            cd /opt/socialhub
+            bash scripts/backup/backup.sh
+            echo "Pre-deploy backup complete."
+
+      # ── Pull latest code ────────────────────────────────────────────────────
+      - name: Pull latest code
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script: |
+            cd /opt/socialhub
+            git fetch --all
+            git checkout main
+            git pull origin main
+            echo "Code updated to: $(git rev-parse --short HEAD)"
+
+      # ── Build and restart ───────────────────────────────────────────────────
+      - name: Build and restart services
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          # Increase timeout for Docker build
+          command_timeout: "20m"
+          script: |
+            cd /opt/socialhub
+
+            echo "Building images…"
+            docker compose build --no-cache --parallel
+
+            echo "Running database migrations…"
+            docker compose run --rm backend alembic upgrade head
+
+            echo "Restarting services with zero-downtime rolling restart…"
+            docker compose up -d --remove-orphans
+
+            echo "Waiting for services to be healthy…"
+            sleep 20
+
+            echo "Running health checks…"
+            bash scripts/healthcheck.sh
+
+      # ── Prune old images ────────────────────────────────────────────────────
+      - name: Prune old Docker images
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script: |
+            docker image prune -f
+            echo "Image prune complete."
+
+      # ── Notify ──────────────────────────────────────────────────────────────
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "Deployment to production: ${{ job.status }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
