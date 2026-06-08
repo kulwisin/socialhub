@@ -156,6 +156,56 @@ export interface TokenRefreshResponse {
   message: string;
 }
 
+// ─── Content Library ──────────────────────────────────────────────────────────
+
+export type ContentFileType = "video" | "audio";
+export type ContentFileStatus =
+  | "pending"
+  | "analyzing"
+  | "analyzed"
+  | "matched"
+  | "queued"
+  | "posted"
+  | "failed";
+
+export interface ContentFolder {
+  id: string;
+  path: string;
+  label: string;
+  is_active: boolean;
+  last_scanned_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentFolderCreate {
+  path: string;
+  label: string;
+}
+
+export interface ContentFile {
+  id: string;
+  folder_id: string;
+  filename: string;
+  file_path: string;
+  file_type: ContentFileType;
+  file_size_bytes: number | null;
+  duration_seconds: number | null;
+  mime_type: string | null;
+  content_hash: string | null;
+  thumbnail_path: string | null;
+  status: ContentFileStatus;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScanResult {
+  added: number;
+  updated: number;
+  skipped: number;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export interface ApiError {

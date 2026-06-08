@@ -9,12 +9,14 @@ import {
   Send,
   Activity,
   Zap,
+  Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/devices", label: "Devices", icon: Smartphone },
+  { href: "/content", label: "Content Library", icon: Library },
   { href: "/upload", label: "Upload Studio", icon: Upload },
   { href: "/posts", label: "Publish History", icon: Send },
   { href: "/activity", label: "Activity", icon: Activity },
