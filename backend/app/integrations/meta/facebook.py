@@ -44,8 +44,8 @@ async def publish_video_to_page(
     with open(video_path, "rb") as fh:
         result = await client.post_multipart(
             f"/{page_id}/videos",
-            files={"file": (video_path.split("/")[-1], fh, "video/mp4")},
-            data={"description": description},
+            files={"source": (video_path.split("/")[-1], fh, "video/mp4")},
+            data={"description": description, "published": "true"},
         )
     # Graph API returns {"id": "<post_id>"} on success.
     return str(result["id"])

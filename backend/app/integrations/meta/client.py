@@ -67,12 +67,15 @@ class MetaGraphClient:
         data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Perform a multipart POST (for file uploads)."""
-        form_data = {**self._default_params(), **(data or {})}
+        # access_token must be a URL query param for multipart uploads, not in
+        # the form body — Facebook's proxy returns 500 when it's in the body.
+        params = self._default_params()
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(
                 f"{self.base_url}{path}",
+                params=params,
                 files=files,
-                data=form_data,
+                data=data or {},
             )
         logger.debug("POST multipart %s → %s", path, response.status_code)
         self._raise_for_status(response)

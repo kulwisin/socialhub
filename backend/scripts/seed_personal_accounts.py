@@ -64,8 +64,8 @@ async def seed() -> None:
                 device_id=device.id,
                 platform="instagram",
                 platform_user_id=settings.META_IG_ACCOUNT_ID,
-                username="kay_singh",
-                display_name="Kay Singh",
+                username="desi_hiphop_wale_launde",
+                display_name="Desi HipHop Wale Londe",
                 access_token_enc=encrypt(settings.META_USER_ACCESS_TOKEN),
                 facebook_page_id=settings.META_PAGE_ID,
                 instagram_business_id=settings.META_IG_ACCOUNT_ID,
@@ -84,8 +84,11 @@ async def seed() -> None:
         else:
             ig_account.access_token_enc = encrypt(settings.META_USER_ACCESS_TOKEN)
             ig_account.token_expires_at = expires_at
+            ig_account.platform_user_id = settings.META_IG_ACCOUNT_ID
             ig_account.instagram_business_id = settings.META_IG_ACCOUNT_ID
             ig_account.facebook_page_id = settings.META_PAGE_ID
+            ig_account.username = "desi_hiphop_wale_launde"
+            ig_account.display_name = "Desi HipHop Wale Londe"
             print(f"Updated Instagram account: {settings.META_IG_ACCOUNT_ID}")
 
         # 3 — Upsert Facebook account
@@ -101,8 +104,8 @@ async def seed() -> None:
                 device_id=device.id,
                 platform="facebook",
                 platform_user_id=settings.META_PAGE_ID,
-                username="Kay Singh",
-                display_name="Kay Singh",
+                username="Desi hip hop",
+                display_name="Desi hip hop",
                 access_token_enc=encrypt(settings.META_USER_ACCESS_TOKEN),
                 refresh_token_enc=encrypt(settings.META_PAGE_ACCESS_TOKEN),
                 facebook_page_id=settings.META_PAGE_ID,
@@ -116,7 +119,10 @@ async def seed() -> None:
             fb_account.access_token_enc = encrypt(settings.META_USER_ACCESS_TOKEN)
             fb_account.refresh_token_enc = encrypt(settings.META_PAGE_ACCESS_TOKEN)
             fb_account.token_expires_at = expires_at
+            fb_account.platform_user_id = settings.META_PAGE_ID
             fb_account.facebook_page_id = settings.META_PAGE_ID
+            fb_account.username = "Desi hip hop"
+            fb_account.display_name = "Desi hip hop"
             print(f"Updated Facebook account: page_id={settings.META_PAGE_ID}")
 
         await db.commit()
