@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import anthropic
+from openai import OpenAI
 
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
@@ -21,9 +21,9 @@ from app.schemas.ai_analysis import AiAnalysisResponse
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "gpt-4o"
 MAX_FRAMES = 6
-FRAME_QUALITY = 2  # ffmpeg -q:v scale: 1=best, 31=worst
+FRAME_QUALITY = 2  # ffmpeg -q:v: 1=best, 31=worst
 
 
 _ANALYSIS_PROMPT = """\
@@ -58,7 +58,7 @@ MIME type: {mime_type}
 Based on the filename and context (this appears to be a music/audio file), provide a creative analysis as if you heard the track. Use the filename to infer genre, style, and content.
 
 Return a JSON object with EXACTLY these keys:
-{
+{{
   "scenes": ["visual scenes this audio would pair with"],
   "objects": ["instruments or sound elements likely present"],
   "activities": ["activities this audio would suit"],
@@ -69,7 +69,7 @@ Return a JSON object with EXACTLY these keys:
   "keywords": ["10-15 relevant keywords for social media"],
   "target_audience": "description of ideal audience",
   "viral_potential_score": <integer 1-100>
-}
+}}
 
 Return ONLY the JSON object."""
 
@@ -78,23 +78,25 @@ def _extract_frames(video_path: str, max_frames: int = MAX_FRAMES) -> list[str]:
     """Extract up to max_frames evenly spaced frames. Returns list of base64 JPEG strings."""
     with tempfile.TemporaryDirectory() as tmpdir:
         out_pattern = str(Path(tmpdir) / "frame_%03d.jpg")
+        # Try select filter first, fall back to fps
         cmd = [
             "ffmpeg", "-i", video_path,
             "-vf", f"select=not(mod(n\\,max(1\\,trunc(n_frames/{max_frames}))))",
             "-vsync", "vfr",
             "-frames:v", str(max_frames),
-            f"-q:v", str(FRAME_QUALITY),
+            "-q:v", str(FRAME_QUALITY),
             out_pattern,
             "-y", "-loglevel", "error",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
-            # Fallback: grab frames at fixed timestamps
+            dur = _get_duration(video_path)
+            interval = max(1, dur // max_frames)
             cmd2 = [
                 "ffmpeg", "-i", video_path,
-                "-vf", f"fps=1/{max(1, _get_duration(video_path) // max_frames)}",
+                "-vf", f"fps=1/{interval}",
                 "-frames:v", str(max_frames),
-                f"-q:v", str(FRAME_QUALITY),
+                "-q:v", str(FRAME_QUALITY),
                 out_pattern,
                 "-y", "-loglevel", "error",
             ]
@@ -108,7 +110,6 @@ def _extract_frames(video_path: str, max_frames: int = MAX_FRAMES) -> list[str]:
 
 
 def _get_duration(video_path: str) -> int:
-    """Return video duration in seconds via ffprobe."""
     try:
         result = subprocess.run(
             [
@@ -125,7 +126,6 @@ def _get_duration(video_path: str) -> int:
 
 
 def _parse_analysis(raw: str) -> dict[str, Any]:
-    """Parse Claude's JSON response, stripping any markdown fences."""
     text = raw.strip()
     if text.startswith("```"):
         lines = text.splitlines()
@@ -142,25 +142,23 @@ class AiAnalysisService:
         self.file_repo = file_repo
         self.analysis_repo = analysis_repo
 
-    def _client(self) -> anthropic.Anthropic:
-        if not settings.ANTHROPIC_API_KEY:
+    def _client(self) -> OpenAI:
+        if not settings.OPENAI_API_KEY:
             raise ValidationError(
-                "ANTHROPIC_API_KEY is not configured. Add it to .env to enable AI analysis."
+                "OPENAI_API_KEY is not configured. Add it to .env to enable AI analysis."
             )
-        return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        return OpenAI(api_key=settings.OPENAI_API_KEY)
 
     async def analyze_file(self, file_id: uuid.UUID) -> AiAnalysisResponse:
-        """Run Claude analysis on a content file and store/return the result."""
         content_file = await self.file_repo.get(file_id)
         if content_file is None:
             raise NotFoundError(f"ContentFile {file_id} not found.")
 
-        # Mark as analyzing
         await self.file_repo.update(file_id, {"status": "analyzing"})
 
         try:
             raw_response, parsed = await asyncio.get_event_loop().run_in_executor(
-                None, self._run_claude, content_file
+                None, self._run_openai, content_file
             )
         except Exception as exc:
             await self.file_repo.update(
@@ -194,19 +192,15 @@ class AiAnalysisService:
             analysis = await self.analysis_repo.create(analysis_data)
 
         await self.file_repo.update(file_id, {"status": "analyzed"})
-
         return AiAnalysisResponse.model_validate(analysis)
 
-    def _run_claude(self, content_file) -> tuple[str, dict]:
-        """Synchronous Claude API call (runs in executor to avoid blocking)."""
+    def _run_openai(self, content_file) -> tuple[str, dict]:
         client = self._client()
-
         if content_file.file_type == "video":
             return self._analyze_video(client, content_file)
-        else:
-            return self._analyze_audio(client, content_file)
+        return self._analyze_audio(client, content_file)
 
-    def _analyze_video(self, client: anthropic.Anthropic, content_file) -> tuple[str, dict]:
+    def _analyze_video(self, client: OpenAI, content_file) -> tuple[str, dict]:
         logger.info("Extracting frames from %s", content_file.file_path)
         frames = _extract_frames(content_file.file_path)
 
@@ -214,28 +208,26 @@ class AiAnalysisService:
             raise ValidationError(f"Could not extract frames from {content_file.filename}")
 
         content: list[dict] = []
-        for i, frame_b64 in enumerate(frames):
+        for frame_b64 in frames:
             content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": frame_b64,
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{frame_b64}",
+                    "detail": "low",
                 },
             })
-
         content.append({"type": "text", "text": _ANALYSIS_PROMPT})
 
-        logger.info("Sending %d frames to Claude for %s", len(frames), content_file.filename)
-        message = client.messages.create(
+        logger.info("Sending %d frames to GPT-4o for %s", len(frames), content_file.filename)
+        response = client.chat.completions.create(
             model=MODEL,
             max_tokens=1024,
             messages=[{"role": "user", "content": content}],
         )
-        raw = message.content[0].text
+        raw = response.choices[0].message.content or ""
         return raw, _parse_analysis(raw)
 
-    def _analyze_audio(self, client: anthropic.Anthropic, content_file) -> tuple[str, dict]:
+    def _analyze_audio(self, client: OpenAI, content_file) -> tuple[str, dict]:
         size_mb = (content_file.file_size_bytes or 0) / (1024 * 1024)
         duration = "unknown"
         if content_file.duration_seconds:
@@ -250,12 +242,12 @@ class AiAnalysisService:
             mime_type=content_file.mime_type or "audio",
         )
 
-        message = client.messages.create(
+        response = client.chat.completions.create(
             model=MODEL,
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+        raw = response.choices[0].message.content or ""
         return raw, _parse_analysis(raw)
 
     async def get_analysis(self, file_id: uuid.UUID) -> AiAnalysisResponse:

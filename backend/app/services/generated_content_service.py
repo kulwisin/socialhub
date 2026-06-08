@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Any
 
-import anthropic
+from openai import OpenAI
 
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
@@ -17,7 +17,7 @@ from app.schemas.generated_content import GeneratedContentResponse
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "gpt-4o"
 
 ALL_PLATFORMS = ["instagram", "tiktok", "youtube", "x", "threads", "snapchat"]
 
@@ -76,19 +76,18 @@ class GeneratedContentService:
         self.analysis_repo = analysis_repo
         self.gen_repo = gen_repo
 
-    def _client(self) -> anthropic.Anthropic:
-        if not settings.ANTHROPIC_API_KEY:
+    def _client(self) -> OpenAI:
+        if not settings.OPENAI_API_KEY:
             raise ValidationError(
-                "ANTHROPIC_API_KEY is not configured. Add it to .env."
+                "OPENAI_API_KEY is not configured. Add it to .env."
             )
-        return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        return OpenAI(api_key=settings.OPENAI_API_KEY)
 
     async def generate_for_file(
         self,
         file_id: uuid.UUID,
         platforms: list[str] | None = None,
     ) -> list[GeneratedContentResponse]:
-        """Generate platform copy for an analyzed file. Replaces any existing generated content."""
         content_file = await self.file_repo.get(file_id)
         if content_file is None:
             raise NotFoundError(f"ContentFile {file_id} not found.")
@@ -103,13 +102,12 @@ class GeneratedContentService:
 
         raw, items = await asyncio.get_event_loop().run_in_executor(
             None,
-            self._run_claude,
+            self._run_openai,
             content_file,
             analysis,
             target_platforms,
         )
 
-        # Replace old generated content for this file
         await self.gen_repo.delete_by_file(file_id)
 
         results = []
@@ -133,7 +131,7 @@ class GeneratedContentService:
         await self.file_repo.update(file_id, {"status": "matched"})
         return results
 
-    def _run_claude(
+    def _run_openai(
         self, content_file, analysis, platforms: list[str]
     ) -> tuple[str, list[dict]]:
         client = self._client()
@@ -152,12 +150,12 @@ class GeneratedContentService:
             platforms=", ".join(platforms),
         )
 
-        message = client.messages.create(
+        response = client.chat.completions.create(
             model=MODEL,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+        raw = response.choices[0].message.content or ""
         return raw, _parse_copy(raw)
 
     async def list_generated(self, file_id: uuid.UUID) -> list[GeneratedContentResponse]:

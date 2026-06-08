@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     TIKTOK_CLIENT_SECRET: str = ""
 
     # AI
-    ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
 
     # Storage
     MEDIA_DIR: str = "/app/media"
