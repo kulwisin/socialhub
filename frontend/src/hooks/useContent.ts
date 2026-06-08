@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { contentService } from "@/services/content.service";
 import type { ContentFolderCreate } from "@/types";
 
+export const ANALYSIS_KEY = (fileId: string) =>
+  ["content", "analysis", fileId] as const;
+export const GENERATED_KEY = (fileId: string) =>
+  ["content", "generated", fileId] as const;
+
 export const FOLDERS_KEY = ["content", "folders"] as const;
 export const FILES_KEY = (folderId?: string) =>
   ["content", "files", folderId ?? "all"] as const;
@@ -43,6 +48,56 @@ export function useDeleteFolder() {
       toast.success("Folder removed");
     },
     onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useAnalyzeFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: string) => contentService.analyzeFile(fileId),
+    onSuccess: (analysis, fileId) => {
+      qc.setQueryData(ANALYSIS_KEY(fileId), analysis);
+      qc.invalidateQueries({ queryKey: FILES_KEY() });
+      toast.success("Analysis complete");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useGetAnalysis(fileId: string, enabled = false) {
+  return useQuery({
+    queryKey: ANALYSIS_KEY(fileId),
+    queryFn: () => contentService.getAnalysis(fileId),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useGenerateCopy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      fileId,
+      platforms,
+    }: {
+      fileId: string;
+      platforms?: string[];
+    }) => contentService.generateCopy(fileId, platforms),
+    onSuccess: (items, { fileId }) => {
+      qc.setQueryData(GENERATED_KEY(fileId), items);
+      qc.invalidateQueries({ queryKey: FILES_KEY() });
+      toast.success(`Generated copy for ${items.length} platform(s)`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useListGenerated(fileId: string, enabled = false) {
+  return useQuery({
+    queryKey: GENERATED_KEY(fileId),
+    queryFn: () => contentService.listGenerated(fileId),
+    enabled,
+    retry: false,
   });
 }
 

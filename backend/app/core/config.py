@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     TIKTOK_CLIENT_KEY: str = ""
     TIKTOK_CLIENT_SECRET: str = ""
 
+    # AI
+    ANTHROPIC_API_KEY: str = ""
+
     # Storage
     MEDIA_DIR: str = "/app/media"
     # 500 MB — Instagram Reels max is ~4 GB but keep it sane for MVP

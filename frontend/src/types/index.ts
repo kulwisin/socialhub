@@ -206,6 +206,46 @@ export interface ScanResult {
   skipped: number;
 }
 
+export interface AiAnalysis {
+  id: string;
+  content_file_id: string;
+  scenes: string[] | null;
+  objects: string[] | null;
+  activities: string[] | null;
+  emotions: string[] | null;
+  genre: string | null;
+  category: string | null;
+  summary: string | null;
+  keywords: string[] | null;
+  target_audience: string | null;
+  viral_potential_score: number | null;
+  model_used: string | null;
+  analyzed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ContentPlatform =
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "x"
+  | "threads"
+  | "snapchat";
+
+export interface GeneratedContent {
+  id: string;
+  content_file_id: string;
+  platform: ContentPlatform;
+  hook: string | null;
+  caption: string | null;
+  cta: string | null;
+  title: string | null;
+  hashtags: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export interface ApiError {

@@ -5,24 +5,33 @@ import { Library } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddFolderDialog } from "@/features/content/AddFolderDialog";
-import { FolderCard } from "@/features/content/FolderCard";
+import { AnalysisPanel } from "@/features/content/AnalysisPanel";
 import { FileTable } from "@/features/content/FileTable";
-import { useContentFolders, useContentFiles } from "@/hooks/useContent";
+import { FolderCard } from "@/features/content/FolderCard";
+import { useContentFiles, useContentFolders } from "@/hooks/useContent";
+import type { ContentFile } from "@/types";
 
 export default function ContentPage() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
+  const [selectedFile, setSelectedFile] = useState<ContentFile | null>(null);
+
   const { data: folders, isLoading: foldersLoading } = useContentFolders();
   const { data: files, isLoading: filesLoading } = useContentFiles(selectedFolderId);
 
   const handleSelectFolder = (id: string) => {
     setSelectedFolderId((prev) => (prev === id ? undefined : id));
+    setSelectedFile(null);
+  };
+
+  const handleSelectFile = (file: ContentFile) => {
+    setSelectedFile((prev) => (prev?.id === file.id ? null : file));
   };
 
   return (
     <>
       <Header
         title="Content Library"
-        description="Manage video and audio files from your local folders."
+        description="Manage video and audio files. Scan folders, analyze with Claude AI, generate platform copy."
         action={<AddFolderDialog />}
       />
 
@@ -44,7 +53,8 @@ export default function ContentPage() {
               <Library className="mb-3 h-10 w-10 text-muted-foreground/40" />
               <p className="font-medium">No folders yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Click &ldquo;Add folder&rdquo; above to register a directory to scan.
+                Click &ldquo;Add folder&rdquo; above to register a directory to
+                scan.
               </p>
             </div>
           ) : (
@@ -61,14 +71,38 @@ export default function ContentPage() {
           )}
         </section>
 
-        {/* Files */}
+        {/* Files + Analysis panel side by side */}
         <section>
           <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             {selectedFolderId
-              ? `Files in "${folders?.find((f) => f.id === selectedFolderId)?.label ?? "folder"}"`
+              ? `Files in "${
+                  folders?.find((f) => f.id === selectedFolderId)?.label ??
+                  "folder"
+                }"`
               : "All files"}
           </h2>
-          <FileTable files={files} isLoading={filesLoading} />
+
+          <div
+            className={`flex gap-6 ${selectedFile ? "items-start" : ""}`}
+          >
+            <div className={selectedFile ? "flex-1 min-w-0" : "w-full"}>
+              <FileTable
+                files={files}
+                isLoading={filesLoading}
+                onSelectFile={handleSelectFile}
+                selectedFileId={selectedFile?.id}
+              />
+            </div>
+
+            {selectedFile && (
+              <div className="w-96 shrink-0">
+                <AnalysisPanel
+                  file={selectedFile}
+                  onClose={() => setSelectedFile(null)}
+                />
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </>

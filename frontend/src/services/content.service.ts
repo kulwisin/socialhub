@@ -1,4 +1,11 @@
-import type { ContentFile, ContentFolder, ContentFolderCreate, ScanResult } from "@/types";
+import type {
+  AiAnalysis,
+  ContentFile,
+  ContentFolder,
+  ContentFolderCreate,
+  GeneratedContent,
+  ScanResult,
+} from "@/types";
 import { api } from "./api";
 
 export const contentService = {
@@ -20,6 +27,36 @@ export const contentService = {
 
   scanFolder: async (id: string): Promise<ScanResult> => {
     const { data } = await api.post<ScanResult>(`/content/folders/${id}/scan`);
+    return data;
+  },
+
+  // ── AI analysis ────────────────────────────────────────────────────────
+
+  analyzeFile: async (id: string): Promise<AiAnalysis> => {
+    const { data } = await api.post<AiAnalysis>(`/content/files/${id}/analyze`);
+    return data;
+  },
+
+  getAnalysis: async (id: string): Promise<AiAnalysis> => {
+    const { data } = await api.get<AiAnalysis>(`/content/files/${id}/analysis`);
+    return data;
+  },
+
+  generateCopy: async (
+    id: string,
+    platforms?: string[]
+  ): Promise<GeneratedContent[]> => {
+    const { data } = await api.post<GeneratedContent[]>(
+      `/content/files/${id}/generate`,
+      platforms ? { platforms } : {}
+    );
+    return data;
+  },
+
+  listGenerated: async (id: string): Promise<GeneratedContent[]> => {
+    const { data } = await api.get<GeneratedContent[]>(
+      `/content/files/${id}/generated`
+    );
     return data;
   },
 
