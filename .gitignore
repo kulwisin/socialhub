@@ -4,6 +4,7 @@ backend/.env
 frontend/.env.local
 *.pem
 *.key
+secrets.md
 
 # ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/

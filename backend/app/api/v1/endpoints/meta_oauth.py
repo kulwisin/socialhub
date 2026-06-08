@@ -22,12 +22,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/meta", tags=["oauth"])
 
 _SCOPES = [
-    "instagram_basic",
-    "instagram_content_publish",
+    "public_profile",
     "pages_show_list",
     "pages_read_engagement",
-    "business_management",
-    "public_profile",
+    "instagram_content_publish",
 ]
 
 
