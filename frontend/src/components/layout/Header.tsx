@@ -1,5 +1,3 @@
-import { RefreshCw } from "lucide-react";
-
 interface HeaderProps {
   title: string;
   description?: string;

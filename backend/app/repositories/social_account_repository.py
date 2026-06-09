@@ -11,26 +11,30 @@ from app.repositories.base import BaseRepository
 class SocialAccountRepository(BaseRepository[SocialAccount]):
     model = SocialAccount
 
-    async def get_by_device_and_platform(
-        self, device_id: uuid.UUID, platform: str
-    ) -> SocialAccount | None:
-        """Return the account for a specific device × platform combo."""
-        stmt = select(SocialAccount).where(
-            SocialAccount.device_id == device_id,
-            SocialAccount.platform == platform,
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def list_by_device(self, device_id: uuid.UUID) -> list[SocialAccount]:
-        """Return all accounts belonging to a device, newest first."""
+    async def list_by_user(self, user_id: uuid.UUID) -> list[SocialAccount]:
+        """Return all accounts belonging to a user, newest first."""
         stmt = (
             select(SocialAccount)
-            .where(SocialAccount.device_id == device_id)
+            .where(SocialAccount.user_id == user_id)
             .order_by(SocialAccount.created_at.desc())
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_by_platform_user(
+        self,
+        user_id: uuid.UUID,
+        platform: str,
+        platform_user_id: str,
+    ) -> SocialAccount | None:
+        """Return the account matching user × platform × platform_user_id, or None."""
+        stmt = select(SocialAccount).where(
+            SocialAccount.user_id == user_id,
+            SocialAccount.platform == platform,
+            SocialAccount.platform_user_id == platform_user_id,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_active_for_publish(
         self, account_ids: list[uuid.UUID]

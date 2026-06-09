@@ -1,11 +1,2 @@
-import type { ActivityLog } from "@/types";
-import { api } from "./api";
-
-export const activityService = {
-  list: async (limit = 50): Promise<ActivityLog[]> => {
-    const { data } = await api.get<ActivityLog[]>("/activity", {
-      params: { limit },
-    });
-    return data;
-  },
-};
+// Legacy service — replaced by account.service.ts and upload.service.ts
+export const activityService = {}

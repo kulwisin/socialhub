@@ -1,29 +1,32 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Smartphone,
-  Upload,
-  Send,
-  Activity,
-  Zap,
+  Link2,
+  PlusCircle,
   Library,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  Settings,
+  Zap,
+  LogOut,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/lib/auth'
+import { useLogout } from '@/hooks/useAuth'
 
 const NAV = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/devices", label: "Devices", icon: Smartphone },
-  { href: "/content", label: "Content Library", icon: Library },
-  { href: "/upload", label: "Upload Studio", icon: Upload },
-  { href: "/posts", label: "Publish History", icon: Send },
-  { href: "/activity", label: "Activity", icon: Activity },
-];
+  { href: '/dashboard', label: 'Dashboard',           icon: LayoutDashboard },
+  { href: '/accounts',  label: 'Connected Accounts',  icon: Link2 },
+  { href: '/create',    label: 'Create Post',          icon: PlusCircle },
+  { href: '/library',   label: 'Content Library',      icon: Library },
+  { href: '/settings',  label: 'Settings',             icon: Settings },
+]
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname()
+  const user = useAuthStore((s) => s.user)
+  const logout = useLogout()
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-border bg-card">
@@ -39,33 +42,40 @@ export function Sidebar() {
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active =
-            href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(href);
+            href === '/dashboard'
+              ? pathname === '/dashboard' || pathname === '/'
+              : pathname.startsWith(href)
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 active
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
               {label}
             </Link>
-          );
+          )
         })}
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border p-4">
-        <p className="text-xs text-muted-foreground">
-          SocialHub MVP · v0.1.0
-        </p>
+      <div className="border-t border-border p-4 space-y-3">
+        {user && (
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+        )}
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Sign out
+        </button>
       </div>
     </aside>
-  );
+  )
 }

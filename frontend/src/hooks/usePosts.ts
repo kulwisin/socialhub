@@ -1,37 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import type { PublishRequest } from "@/types";
-import { postService } from "@/services/post.service";
-import { UPLOADS_KEY } from "./useUploads";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import type { PublishRequest } from '@/types'
+import { postService } from '@/services/post.service'
+import { UPLOADS_KEY } from './useUploads'
 
-export const POSTS_KEY = ["posts"] as const;
+export const POSTS_KEY = ['posts'] as const
 
-export function usePosts(limit = 20, statusFilter?: string) {
+export function usePosts(limit = 20) {
   return useQuery({
-    queryKey: [...POSTS_KEY, limit, statusFilter],
-    queryFn: () => postService.list(limit, statusFilter),
-  });
+    queryKey: [...POSTS_KEY, limit],
+    queryFn: () => postService.list(0, limit),
+  })
+}
+
+export function usePost(id: string) {
+  return useQuery({
+    queryKey: [...POSTS_KEY, id],
+    queryFn: () => postService.get(id),
+    enabled: !!id,
+  })
 }
 
 export function usePublish() {
-  const qc = useQueryClient();
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: (request: PublishRequest) => postService.publish(request),
-    onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: POSTS_KEY });
-      qc.invalidateQueries({ queryKey: UPLOADS_KEY });
-      if (result.failed === 0) {
-        toast.success(
-          `Published to ${result.succeeded} account${result.succeeded !== 1 ? "s" : ""}`
-        );
-      } else if (result.succeeded === 0) {
-        toast.error(`All ${result.failed} publishes failed`);
-      } else {
-        toast.warning(
-          `${result.succeeded} published, ${result.failed} failed`
-        );
-      }
+    mutationFn: (req: PublishRequest) => postService.publish(req),
+    onSuccess: (posts) => {
+      qc.invalidateQueries({ queryKey: POSTS_KEY })
+      qc.invalidateQueries({ queryKey: UPLOADS_KEY })
+      toast.success(`Published to ${posts.length} account${posts.length !== 1 ? 's' : ''}`)
     },
     onError: (err: Error) => toast.error(err.message),
-  });
+  })
 }

@@ -29,18 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     media_dir.mkdir(parents=True, exist_ok=True)
     logger.info("MEDIA_DIR ready: %s", media_dir)
 
-    # Refresh any Instagram tokens expiring within 10 days
-    try:
-        from app.db.session import AsyncSessionFactory
-        from app.services.token_refresh_service import TokenRefreshService
-
-        async with AsyncSessionFactory() as session:
-            result = await TokenRefreshService(session).refresh_expiring_accounts()
-            if result["refreshed"]:
-                logger.info("Startup token refresh: %s", result)
-    except Exception:
-        # Never block startup for a token refresh failure
-        logger.warning("Startup token refresh skipped (DB may not be ready yet)")
+    logger.info("SocialHub API started.")
 
     yield
     logger.info("SocialHub API shutting down.")

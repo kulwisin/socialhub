@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, CheckConstraint, Integer, String, Text
+import uuid
+
+from sqlalchemy import ARRAY, BigInteger, CheckConstraint, Float, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import BaseModel
@@ -11,8 +14,8 @@ UPLOAD_STATUS_VALUES = ("pending", "ready", "failed")
 
 class Upload(BaseModel):
     """
-    A media file uploaded by the user, ready to be published to one or more platforms.
-    The file lives on disk at `file_path` (relative to MEDIA_DIR).
+    A media file uploaded by the user. Can be published to multiple accounts.
+    file_path is relative to MEDIA_DIR.
     """
 
     __tablename__ = "uploads"
@@ -21,23 +24,30 @@ class Upload(BaseModel):
         CheckConstraint(f"status IN {UPLOAD_STATUS_VALUES}", name="chk_uploads_status"),
     )
 
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
     original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
-    # Path relative to MEDIA_DIR (e.g. "2026/06/04/<uuid>.mp4")
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Thumbnail path (extracted from video on upload)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     thumbnail_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_type: Mapped[str] = mapped_column(String(20), nullable=False, default="video")
 
-    # Caption to publish — can be customised per post before publishing
-    caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Content metadata — entered manually by the user
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hashtags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
 
-    # Processing status
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    user: Mapped[User] = relationship("User", back_populates="uploads")
     posts: Mapped[list[Post]] = relationship(
         "Post", back_populates="upload", cascade="all, delete-orphan"
     )
